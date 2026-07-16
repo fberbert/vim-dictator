@@ -25,6 +25,10 @@ vim.fn.system({ "chmod", "+x", fake_command })
 local dictator = require("vim_dictator")
 dictator.setup({ command = fake_command, map_keys = false })
 
+dictator.setup({ command = fake_command })
+assert(vim.fn.maparg("<C-d>", "n") ~= "", "Control+D must toggle dictation")
+assert(vim.fn.maparg("<C-d>c", "n") ~= "", "Control+D followed by c must cancel dictation")
+
 vim.api.nvim_buf_set_lines(0, 0, -1, false, { "antes.depois" })
 vim.api.nvim_win_set_cursor(0, { 1, 6 })
 dictator.toggle()

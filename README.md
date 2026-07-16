@@ -1,18 +1,19 @@
 # Vim Dictator
 
-Ditado por voz para Neovim 0.9+ usando PipeWire e a API de transcricao da OpenAI.
+Voice dictation for Neovim 0.9+ using PipeWire and the OpenAI transcription API.
 
-O plugin nunca simula teclas no X11/Wayland. Ele insere a transcricao diretamente
-no buffer do Neovim, na posicao onde a gravacao comecou.
+The plugin never simulates X11 or Wayland keystrokes. It inserts the returned
+transcription directly into the Neovim buffer at the cursor position where
+recording started.
 
-## Dependencias
+## Requirements
 
 - Neovim 0.9+
-- PipeWire com `pw-record`
-- `curl` e `jq`
-- Uma chave de API OpenAI
+- PipeWire with `pw-record`
+- `curl` and `jq`
+- An OpenAI API key
 
-## Instalacao
+## Installation
 
 ```bash
 cd ~/projetos/vim-dictator
@@ -20,17 +21,17 @@ chmod +x bin/vim-dictator install.sh tests/test_cli.sh
 ./install.sh
 
 install -d -m 700 ~/.config/vim-dictator
-printf '%s\n' 'OPENAI_API_KEY=sua_chave_aqui' > ~/.config/vim-dictator/env
+printf '%s\n' 'OPENAI_API_KEY=your_api_key' > ~/.config/vim-dictator/env
 chmod 600 ~/.config/vim-dictator/env
 ```
 
-Reabra o Neovim depois da instalacao. O comando le a chave do ambiente ou de
-`~/.config/vim-dictator/env`; nao coloque a chave em `init.lua`.
+Restart Neovim after installation. The command reads the API key from the
+environment or `~/.config/vim-dictator/env`; do not put the key in `init.lua`.
 
 ### NvChad / lazy.nvim
 
-NvChad desabilita o carregamento de pacotes nativos do Neovim. Adicione este
-bloco a `~/.config/nvim/lua/custom/plugins.lua` antes do `return plugins`:
+NvChad disables Neovim's native package loading. Add this entry to
+`~/.config/nvim/lua/custom/plugins.lua` before `return plugins`:
 
 ```lua
 {
@@ -48,37 +49,38 @@ bloco a `~/.config/nvim/lua/custom/plugins.lua` antes do `return plugins`:
 },
 ```
 
-## Uso
+## Usage
 
-- `\\d`: inicia a gravacao; pressione novamente para parar e inserir a transcricao.
-- `\\dc`: cancela e descarta a gravacao.
-- `:VimDictatorToggle`, `:VimDictatorCancel` e `:VimDictatorStatus`: comandos equivalentes.
+- `Ctrl-D`: start recording. Press it again to stop and insert the transcription.
+- `Ctrl-D`, then `c`: cancel and discard the current recording.
+- `:VimDictatorToggle`, `:VimDictatorCancel`, and `:VimDictatorStatus`: equivalent commands.
 
-O microfone padrao atual do PipeWire e usado.
+The plugin uses the current PipeWire default microphone. Because the cancel
+shortcut begins with the toggle shortcut, press `c` immediately after `Ctrl-D`.
 
-## Configuracao opcional
+## Optional configuration
 
-No `init.lua`, antes do carregamento do plugin, voce pode definir:
+Before the plugin is loaded, you can set these values in `init.lua`:
 
 ```lua
-vim.g.vim_dictator_command = "/caminho/para/vim-dictator"
-vim.g.vim_dictator_disable = true -- desabilita o carregamento automatico
+vim.g.vim_dictator_command = "/path/to/vim-dictator"
+vim.g.vim_dictator_disable = true -- disable automatic package loading
 ```
 
-Para termos tecnicos, defina `VIM_DICTATOR_PROMPT` no ambiente ou no seu launcher
-do Neovim. O modelo padrao e `gpt-4o-transcribe`; para alterar, use
+Set `VIM_DICTATOR_PROMPT` in the environment or your Neovim launcher to provide
+domain vocabulary. The default model is `gpt-4o-transcribe`; override it with
 `VIM_DICTATOR_MODEL`.
 
-## Testes
+## Tests
 
 ```bash
 bash tests/test_cli.sh
 nvim --headless -u NONE -n -l tests/test_plugin.lua
 ```
 
-No Neovim em execucao, confirme a integracao com:
+In Neovim, verify the mappings and state with:
 
 ```vim
-:verbose nmap \d
+:verbose nmap <C-d>
 :VimDictatorStatus
 ```

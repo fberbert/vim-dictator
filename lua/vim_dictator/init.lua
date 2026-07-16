@@ -2,8 +2,8 @@ local M = {}
 
 local defaults = {
   command = "vim-dictator",
-  toggle_key = "<leader>d",
-  cancel_key = "<leader>dc",
+  toggle_key = "<C-d>",
+  cancel_key = "<C-d>c",
   map_keys = true,
 }
 
