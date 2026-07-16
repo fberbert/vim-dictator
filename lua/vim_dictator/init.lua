@@ -1,7 +1,20 @@
 local M = {}
 
+local function bundled_command()
+  local source = debug.getinfo(1, "S").source
+  if source:sub(1, 1) == "@" then
+    local root = vim.fn.fnamemodify(source:sub(2), ":h:h:h")
+    local suffix = vim.loop.os_uname().sysname == "Windows_NT" and ".cmd" or ""
+    local command = root .. "/bin/vim-dictator" .. suffix
+    if vim.fn.filereadable(command) == 1 then
+      return command
+    end
+  end
+  return "vim-dictator"
+end
+
 local defaults = {
-  command = "vim-dictator",
+  command = bundled_command(),
   toggle_key = "<C-d>",
   cancel_key = "<C-d>c",
   map_keys = true,

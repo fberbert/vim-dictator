@@ -1,32 +1,55 @@
 # Vim Dictator
 
-Voice dictation for Neovim 0.9+ using PipeWire and the OpenAI transcription API.
+Voice dictation for Neovim 0.9+ using the OpenAI transcription API.
 
-The plugin never simulates X11 or Wayland keystrokes. It inserts the returned
-transcription directly into the Neovim buffer at the cursor position where
-recording started.
+The plugin inserts the returned text directly into the Neovim buffer. It never
+simulates X11, Wayland, macOS, or Windows keyboard input.
 
-## Requirements
+## Platform support
 
-- Neovim 0.9+
-- PipeWire with `pw-record`
-- `curl` and `jq`
-- An OpenAI API key
+| Platform | Recorder | Microphone selection |
+| --- | --- | --- |
+| Linux | PipeWire `pw-record` | Default source, or `VIM_DICTATOR_AUDIO_TARGET` |
+| macOS | FFmpeg AVFoundation | Default microphone, or `VIM_DICTATOR_AUDIO_DEVICE` |
+| Windows | FFmpeg DirectShow | `VIM_DICTATOR_AUDIO_DEVICE` is required |
+
+All platforms require Python 3.10+, `curl`, and an OpenAI API key. macOS and
+Windows also require FFmpeg with the AVFoundation or DirectShow input device.
 
 ## Installation
+
+### Linux and macOS
 
 ```bash
 git clone https://github.com/fberbert/vim-dictator.git
 cd vim-dictator
 ./install.sh
+```
 
+Create the API-key file:
+
+```bash
 install -d -m 700 ~/.config/vim-dictator
 printf '%s\n' 'OPENAI_API_KEY=your_api_key' > ~/.config/vim-dictator/env
 chmod 600 ~/.config/vim-dictator/env
 ```
 
-Restart Neovim after installation. The command reads the API key from the
-environment or `~/.config/vim-dictator/env`; do not put the key in `init.lua`.
+### Windows
+
+In PowerShell:
+
+```powershell
+git clone https://github.com/fberbert/vim-dictator.git
+cd vim-dictator
+Set-ExecutionPolicy -Scope Process Bypass
+.\install.ps1
+
+New-Item -ItemType Directory -Force "$env:APPDATA\vim-dictator"
+Set-Content "$env:APPDATA\vim-dictator\env" 'OPENAI_API_KEY=your_api_key'
+```
+
+The Windows installer copies the plugin into Neovim's standard data directory,
+so run `git pull` followed by `.\install.ps1` when updating it.
 
 ### NvChad / lazy.nvim
 
@@ -42,12 +65,13 @@ NvChad disables Neovim's native package loading. Add this entry to
     vim.g.vim_dictator_disable = true
   end,
   config = function()
-    require("vim_dictator").setup {
-      command = vim.fn.expand "~/.local/bin/vim-dictator",
-    }
+    require("vim_dictator").setup()
   end,
 },
 ```
+
+Restart Neovim after installation. The plugin locates its installed command
+automatically; do not put API keys in `init.lua`.
 
 ## Usage
 
@@ -55,32 +79,32 @@ NvChad disables Neovim's native package loading. Add this entry to
 - `Ctrl-D`, then `c`: cancel and discard the current recording.
 - `:VimDictatorToggle`, `:VimDictatorCancel`, and `:VimDictatorStatus`: equivalent commands.
 
-The plugin uses the current PipeWire default microphone. Because the cancel
-shortcut begins with the toggle shortcut, press `c` immediately after `Ctrl-D`.
+Because the cancel shortcut begins with the toggle shortcut, press `c`
+immediately after `Ctrl-D`.
+
+## Audio devices
+
+```bash
+vim-dictator devices
+```
+
+On macOS, set `VIM_DICTATOR_AUDIO_DEVICE` to the AVFoundation device name or
+index reported by this command. On Windows, set it to the exact DirectShow
+microphone name before starting Neovim. For example, in PowerShell:
+
+```powershell
+setx VIM_DICTATOR_AUDIO_DEVICE 'Microphone (USB Audio Device)'
+```
 
 ## Optional configuration
 
-Before the plugin is loaded, you can set these values in `init.lua`:
-
-```lua
-vim.g.vim_dictator_command = "/path/to/vim-dictator"
-vim.g.vim_dictator_disable = true -- disable automatic package loading
-```
-
-Set `VIM_DICTATOR_PROMPT` in the environment or your Neovim launcher to provide
-domain vocabulary. The default model is `gpt-4o-transcribe`; override it with
-`VIM_DICTATOR_MODEL`.
+Set `VIM_DICTATOR_PROMPT` to provide domain vocabulary. The default model is
+`gpt-4o-transcribe`; override it with `VIM_DICTATOR_MODEL`.
 
 ## Tests
 
 ```bash
+python3 -m unittest tests/test_platforms.py -v
 bash tests/test_cli.sh
 nvim --headless -u NONE -n -l tests/test_plugin.lua
-```
-
-In Neovim, verify the mappings and state with:
-
-```vim
-:verbose nmap <C-d>
-:VimDictatorStatus
 ```
