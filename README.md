@@ -16,8 +16,8 @@ recording started.
 ## Installation
 
 ```bash
-cd ~/projetos/vim-dictator
-chmod +x bin/vim-dictator install.sh tests/test_cli.sh
+git clone https://github.com/fberbert/vim-dictator.git
+cd vim-dictator
 ./install.sh
 
 install -d -m 700 ~/.config/vim-dictator
@@ -35,7 +35,7 @@ NvChad disables Neovim's native package loading. Add this entry to
 
 ```lua
 {
-  dir = vim.fn.expand "~/projetos/vim-dictator",
+  dir = vim.fn.stdpath("data") .. "/site/pack/vim-dictator/start/vim-dictator",
   name = "vim-dictator",
   lazy = false,
   init = function()
@@ -43,7 +43,7 @@ NvChad disables Neovim's native package loading. Add this entry to
   end,
   config = function()
     require("vim_dictator").setup {
-      command = vim.fn.expand "~/projetos/vim-dictator/bin/vim-dictator",
+      command = vim.fn.expand "~/.local/bin/vim-dictator",
     }
   end,
 },

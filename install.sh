@@ -11,5 +11,5 @@ mkdir -p "$bin_dir" "$plugin_dir"
 ln -sfn "$project_dir/bin/vim-dictator" "$bin_dir/vim-dictator"
 ln -sfn "$project_dir" "$plugin_link"
 
-printf 'Instalado:\n  %s\n  %s\n' "$bin_dir/vim-dictator" "$plugin_link"
-printf 'Crie %s/.config/vim-dictator/env com OPENAI_API_KEY=... e permissao 600.\n' "$HOME"
+printf 'Installed:\n  %s\n  %s\n' "$bin_dir/vim-dictator" "$plugin_link"
+printf 'Create %s/.config/vim-dictator/env with OPENAI_API_KEY=... and mode 600.\n' "$HOME"
