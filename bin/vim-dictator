@@ -1,0 +1,200 @@
+#!/usr/bin/env bash
+
+set -euo pipefail
+
+runtime_dir=${VIM_DICTATOR_RUNTIME_DIR:-"${XDG_RUNTIME_DIR:-/tmp}/vim-dictator-${UID}"}
+state_file="$runtime_dir/session"
+lock_dir="$runtime_dir/.lock"
+env_file=${VIM_DICTATOR_ENV_FILE:-"${XDG_CONFIG_HOME:-$HOME/.config}/vim-dictator/env"}
+recorder=${VIM_DICTATOR_RECORDER:-pw-record}
+curl_command=${VIM_DICTATOR_CURL:-curl}
+jq_command=${VIM_DICTATOR_JQ:-jq}
+model=${VIM_DICTATOR_MODEL:-gpt-4o-transcribe}
+
+usage() {
+  cat <<'EOF'
+Usage: vim-dictator <start|stop|cancel|status>
+
+start   Start recording the default PipeWire microphone.
+stop    Stop recording, transcribe it with OpenAI, and print the text.
+cancel  Stop recording and discard the audio without transcribing.
+status  Print recording or idle.
+EOF
+}
+
+error() {
+  printf 'vim-dictator: %s\n' "$*" >&2
+  exit 1
+}
+
+ensure_runtime_dir() {
+  umask 077
+  mkdir -p "$runtime_dir"
+  chmod 700 "$runtime_dir"
+}
+
+load_api_key() {
+  if [ -n "${OPENAI_API_KEY:-}" ]; then
+    return
+  fi
+
+  if [ -r "$env_file" ]; then
+    OPENAI_API_KEY=$(sed -n 's/^OPENAI_API_KEY=//p' "$env_file" | head -n 1)
+    export OPENAI_API_KEY
+  fi
+
+  [ -n "${OPENAI_API_KEY:-}" ] || error "OPENAI_API_KEY nao definida. Use o ambiente ou $env_file."
+}
+
+require_command() {
+  command -v "$1" >/dev/null 2>&1 || error "comando obrigatorio nao encontrado: $1"
+}
+
+acquire_lock() {
+  ensure_runtime_dir
+  local attempts=0
+
+  until mkdir "$lock_dir" 2>/dev/null; do
+    attempts=$((attempts + 1))
+    [ "$attempts" -lt 50 ] || error "outra operacao do vim-dictator esta em andamento"
+    sleep 0.1
+  done
+}
+
+release_lock() {
+  rmdir "$lock_dir" 2>/dev/null || true
+}
+
+with_lock() {
+  acquire_lock
+  trap release_lock EXIT
+  "$@"
+}
+
+load_session() {
+  [ -f "$state_file" ] || return 1
+  IFS= read -r recorder_pid < "$state_file" || return 1
+  audio_file=$(sed -n '2p' "$state_file")
+  [ -n "${recorder_pid:-}" ] && [ -n "${audio_file:-}" ]
+}
+
+process_is_running() {
+  kill -0 "$1" 2>/dev/null || return 1
+  ! ps -o stat= -p "$1" 2>/dev/null | grep -q 'Z'
+}
+
+clear_session() {
+  rm -f "$state_file"
+}
+
+wait_for_process_exit() {
+  local pid=$1
+  local attempts=0
+
+  while process_is_running "$pid"; do
+    attempts=$((attempts + 1))
+    if [ "$attempts" -ge 100 ]; then
+      kill -TERM "$pid" 2>/dev/null || true
+      error "o gravador nao encerrou a tempo"
+    fi
+    sleep 0.05
+  done
+}
+
+start_recording() {
+  require_command "$recorder"
+  load_api_key
+
+  if load_session; then
+    if process_is_running "$recorder_pid"; then
+      error "uma gravacao ja esta em andamento"
+    fi
+    rm -f "$audio_file"
+    clear_session
+  fi
+
+  local timestamp
+  timestamp=$(date +%s%N)
+  audio_file="$runtime_dir/recording-${timestamp}-$$.wav"
+
+  "$recorder" --rate 16000 --channels 1 --format s16 "$audio_file" >/dev/null 2>&1 &
+  recorder_pid=$!
+  sleep 0.1
+
+  if ! process_is_running "$recorder_pid"; then
+    rm -f "$audio_file"
+    error "pw-record encerrou logo apos iniciar"
+  fi
+
+  local temporary_state
+  temporary_state=$(mktemp "$runtime_dir/session.XXXXXX")
+  printf '%s\n%s\n' "$recorder_pid" "$audio_file" > "$temporary_state"
+  mv "$temporary_state" "$state_file"
+}
+
+stop_recorder() {
+  if process_is_running "$recorder_pid"; then
+    kill -TERM "$recorder_pid"
+    wait_for_process_exit "$recorder_pid"
+  fi
+}
+
+transcribe() {
+  require_command "$curl_command"
+  require_command "$jq_command"
+  load_api_key
+  [ -s "$audio_file" ] || error "arquivo de audio ausente ou vazio: $audio_file"
+
+  local response
+  local curl_args=(
+    --fail
+    --silent
+    --show-error
+    --request POST
+    --url https://api.openai.com/v1/audio/transcriptions
+    --header "Authorization: Bearer $OPENAI_API_KEY"
+    --form "file=@$audio_file"
+    --form "model=$model"
+    --form response_format=json
+    --form language=pt
+  )
+
+  if [ -n "${VIM_DICTATOR_PROMPT:-}" ]; then
+    curl_args+=(--form "prompt=$VIM_DICTATOR_PROMPT")
+  fi
+
+  response=$("$curl_command" "${curl_args[@]}") || error "a transcricao na API OpenAI falhou"
+  printf '%s' "$response" | "$jq_command" --exit-status --raw-output '.text // empty' || error "resposta de transcricao invalida"
+}
+
+stop_and_transcribe() {
+  load_session || error "nenhuma gravacao ativa"
+  stop_recorder
+  transcribe
+  rm -f "$audio_file"
+  clear_session
+}
+
+cancel_recording() {
+  load_session || exit 0
+  stop_recorder
+  rm -f "$audio_file"
+  clear_session
+}
+
+show_status() {
+  if load_session && process_is_running "$recorder_pid"; then
+    printf 'recording\n'
+  else
+    printf 'idle\n'
+  fi
+}
+
+case "${1:-}" in
+  start) with_lock start_recording ;;
+  stop) with_lock stop_and_transcribe ;;
+  cancel) with_lock cancel_recording ;;
+  status) show_status ;;
+  -h|--help|help) usage ;;
+  *) usage >&2; exit 64 ;;
+esac
