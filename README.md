@@ -99,7 +99,7 @@ setx VIM_DICTATOR_AUDIO_DEVICE 'Microphone (USB Audio Device)'
 ## Optional configuration
 
 Set `VIM_DICTATOR_PROMPT` to provide domain vocabulary. The default model is
-`gpt-4o-transcribe`; override it with `VIM_DICTATOR_MODEL`.
+`gpt-transcribe`; override it with `VIM_DICTATOR_MODEL`.
 
 ## Tests
 

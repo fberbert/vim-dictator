@@ -275,6 +275,7 @@ class Dictator:
 
         curl = self.env.get("VIM_DICTATOR_CURL", "curl")
         self.require_executable(curl)
+        model = self.env.get("VIM_DICTATOR_MODEL", "gpt-transcribe")
         command = [
             curl,
             "--fail",
@@ -289,11 +290,11 @@ class Dictator:
             "--form",
             f"file=@{audio_file}",
             "--form",
-            f"model={self.env.get('VIM_DICTATOR_MODEL', 'gpt-4o-transcribe')}",
+            f"model={model}",
             "--form",
             "response_format=json",
             "--form",
-            "language=pt",
+            "languages[]=pt" if model == "gpt-transcribe" else "language=pt",
         ]
         if prompt := self.env.get("VIM_DICTATOR_PROMPT"):
             command.extend(["--form", f"prompt={prompt}"])

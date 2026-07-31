@@ -56,6 +56,18 @@ run_command() {
     "$command_path" "$@"
 }
 
+run_command_for_model() {
+  local model=$1
+  shift
+
+  PATH="$fake_bin:$PATH" \
+    TEST_LOG_DIR="$log_dir" \
+    VIM_DICTATOR_RUNTIME_DIR="$runtime_dir" \
+    VIM_DICTATOR_MODEL="$model" \
+    OPENAI_API_KEY="test-key" \
+    "$command_path" "$@"
+}
+
 run_command start
 assert_equals "$(run_command status)" "recording" "status deve informar gravacao ativa"
 
@@ -69,6 +81,14 @@ grep -q -- 'model=gpt-transcribe' "$log_dir/curl.args" || fail "transcricao deve
 grep -q -- 'languages\[\]=pt' "$log_dir/curl.args" || fail "transcricao deve solicitar portugues"
 if grep -q -- 'language=pt' "$log_dir/curl.args"; then
   fail "gpt-transcribe nao deve receber o campo language legado"
+fi
+
+run_command_for_model whisper-1 start
+run_command_for_model whisper-1 stop >/dev/null
+grep -q -- 'model=whisper-1' "$log_dir/curl.args" || fail "override deve usar o modelo solicitado"
+grep -q -- 'language=pt' "$log_dir/curl.args" || fail "modelos legados devem receber o campo language"
+if grep -q -- 'languages\[\]=pt' "$log_dir/curl.args"; then
+  fail "modelos legados nao devem receber languages"
 fi
 
 run_command start
