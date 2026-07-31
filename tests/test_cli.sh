@@ -65,8 +65,11 @@ assert_equals "$(run_command status)" "idle" "stop deve limpar o estado"
 
 grep -q -- '--rate 16000' "$log_dir/pw-record.args" || fail "gravador deve usar 16 kHz"
 grep -q -- '--channels 1' "$log_dir/pw-record.args" || fail "gravador deve usar um canal"
-grep -q -- 'model=gpt-4o-transcribe' "$log_dir/curl.args" || fail "transcricao deve usar gpt-4o-transcribe"
-grep -q -- 'language=pt' "$log_dir/curl.args" || fail "transcricao deve solicitar portugues"
+grep -q -- 'model=gpt-transcribe' "$log_dir/curl.args" || fail "transcricao deve usar gpt-transcribe"
+grep -q -- 'languages\[\]=pt' "$log_dir/curl.args" || fail "transcricao deve solicitar portugues"
+if grep -q -- 'language=pt' "$log_dir/curl.args"; then
+  fail "gpt-transcribe nao deve receber o campo language legado"
+fi
 
 run_command start
 run_command cancel
