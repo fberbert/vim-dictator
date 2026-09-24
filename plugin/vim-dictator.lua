@@ -3,5 +3,5 @@ if vim.g.vim_dictator_disable then
 end
 
 require("vim_dictator").setup({
-  command = vim.g.vim_dictator_command or "vim-dictator",
+  command = vim.g.vim_dictator_command,
 })

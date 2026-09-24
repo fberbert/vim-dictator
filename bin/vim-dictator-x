@@ -1,4 +1,4 @@
 #!/usr/bin/env sh
 
 script_dir=$(python3 -c 'import os, sys; print(os.path.dirname(os.path.realpath(sys.argv[1])))' "$0") || exit "$?"
-exec python3 "$script_dir/vim_dictator_cli.py" "$@"
+exec /usr/bin/python3 "$script_dir/vim_dictator_tray.py" "$@"

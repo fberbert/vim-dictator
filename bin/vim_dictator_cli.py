@@ -5,6 +5,7 @@
 from __future__ import annotations
 
 import json
+import math
 import os
 import shutil
 import signal
@@ -298,6 +299,16 @@ class Dictator:
         ]
         if prompt := self.env.get("VIM_DICTATOR_PROMPT"):
             command.extend(["--form", f"prompt={prompt}"])
+
+        if "VIM_DICTATOR_REQUEST_TIMEOUT" in self.env:
+            timeout = self.env["VIM_DICTATOR_REQUEST_TIMEOUT"]
+            try:
+                seconds = float(timeout)
+            except ValueError:
+                raise DictatorError("VIM_DICTATOR_REQUEST_TIMEOUT must be a number greater than 0 and at most 3600") from None
+            if not math.isfinite(seconds) or not 0 < seconds <= 3600:
+                raise DictatorError("VIM_DICTATOR_REQUEST_TIMEOUT must be a number greater than 0 and at most 3600")
+            command.extend(["--max-time", timeout])
 
         response = subprocess.run(command, text=True, capture_output=True, check=False)
         if response.returncode != 0:
